@@ -24,41 +24,67 @@ async function newShortUrl(req, res){
 
 async function urlsById(req, res){
     
-        const { id } = req.params;
+    const { id } = req.params;
 
-        if (typeof id !== "number") {
-            res.status(422).send("Id deve ser um número!");
-            return;
-        }
-    
-        const url = await client.query(`SELECT * FROM links WHERE id = $1`, [id]);
-    
-        if (url.rows.length === 0) {
-            res.status(404).send("Url não encontrada!");
-            return;
-        }
+    if (isNaN(Number(id))) {
+        res.status(422).send("Id deve ser um número!");
+        return;
+    }
 
-        const response = {
-            id,
-            shortUrl: url.rows[0].shortUrl,
-            url: url.rows[0].url
-        }
-    
-        res.status(200).send(response);
+    const url = await client.query(`SELECT * FROM links WHERE id = $1`, [id]);
+
+    if (url.rows.length === 0) {
+        res.status(404).send("Url não encontrada!");
+        return;
+    }
+
+    const response = {
+        id,
+        shortUrl: url.rows[0].shortUrl,
+        url: url.rows[0].url
+    }
+
+    res.status(200).send(response);
 }
 
 async function openUrl(req, res){
         
-        const { shortUrl } = req.params;
+    const { shortUrl } = req.params;
+
+    const url = await client.query(`UPDATE links SET "timesClicked" = "timesClicked" + 1 WHERE "shortUrl" = $1 RETURNING *`, [shortUrl]);
+
+    if (url.rows.length === 0) {
+        res.status(404).send("Url não encontrada!");
+        return;
+    }
     
-        const url = await client.query(`SELECT * FROM links WHERE "shortUrl" = $1`, [shortUrl]);
-    
-        if (url.rows.length === 0) {
-            res.status(404).send("Url não encontrada!");
-            return;
-        }
-    
-        res.redirect(url.rows[0].url);
+    res.redirect(url.rows[0].url);
 }
 
-export {  newShortUrl, urlsById, openUrl };
+async function deleteById(req, res){
+        
+    const { id } = req.params;
+
+    if (isNaN(Number(id))) {
+        res.status(422).send("Id deve ser um número!");
+        return;
+    }
+
+    const url = await client.query(`SELECT * FROM links WHERE id = $1`, [id]);
+
+    if (url.rows.length === 0) {
+        res.status(404).send("Url não encontrada!");
+        return;
+    }
+
+    if (url.rows[0].userId !== res.locals.userId) {
+        res.status(401).send("A url não pertence ao usuário!");
+        return;
+    }
+
+    await client.query(`DELETE FROM links WHERE id = $1`, [id]);
+
+    res.sendStatus(204);
+}
+
+export {  newShortUrl, urlsById, openUrl, deleteById };
