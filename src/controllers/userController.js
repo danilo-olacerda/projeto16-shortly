@@ -29,4 +29,11 @@ async function getUserInfo(_, res){
         res.status(200).send(response);
 }
 
-export { getUserInfo };
+async function getUsersRank(_, res){
+
+    const users = await client.query(`SELECT users.id, name, COUNT(links.id) AS "linksCount", COALESCE(SUM(links."timesClicked"), 0) AS "visitCount" FROM users LEFT JOIN links ON users.id = links."userId" GROUP BY users.id ORDER BY "visitCount" DESC LIMIT 10`);
+    
+    res.status(200).send(users.rows);
+}
+
+export { getUserInfo, getUsersRank };
