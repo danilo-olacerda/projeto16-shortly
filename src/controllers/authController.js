@@ -6,9 +6,9 @@ async function register(_, res){
 
     const newUser = res.locals.newUser;
 
-    await client.query(`INSERT INTO users (name, email, password) VALUES ($1, $2, $3)`, [newUser.name, newUser.email, newUser.password]);
+    await client.query(`INSERT INTO users (name, email, password, "createdAt") VALUES ($1, $2, $3, $4)`, [newUser.name, newUser.email, newUser.password, new Date()]);
 
-    res.send(201);
+    res.sendStatus(201);
 }
 
 async function login(_, res){
@@ -25,10 +25,14 @@ async function login(_, res){
         }
 
         const token = uuid();
+            
+        const oldSession = await client.query(`UPDATE sessions SET token = $1, "createdAt" = $2 WHERE "userId" = $3`, [token, new Date(),userId]);
 
-        await client.query(`INSERT INTO sessions ("userId", token) VALUES ($1, $2)`, [userId, token]);
+        if (oldSession.rowCount === 0) {
+            await client.query(`INSERT INTO sessions ("userId", token, "createdAt") VALUES ($1, $2, $3)`, [userId, token, new Date()]);
+        }
         
-        res.status(200).send({ token });
+        res.status(200).send({ token: `Bearer ${token}` });
 }
 
 export { register, login };
